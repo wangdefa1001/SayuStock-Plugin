@@ -57,6 +57,17 @@ const SECTIONS = [
   },
 ]
 
+/** 帮助里统一展示带 # 的写法：无论面板是否强制前缀，# 写法都一定可用 */
+const withPrefix = sections =>
+  sections.map(sec => ({
+    ...sec,
+    items: sec.items.map(it => ({
+      ...it,
+      cmd: it.cmd.startsWith("#") ? it.cmd : `#${it.cmd}`,
+      eg: String(it.eg ?? "").startsWith("#") ? it.eg : `#${it.eg}`,
+    })),
+  }))
+
 export class SayuHelp extends plugin {
   constructor() {
     super({
@@ -70,9 +81,10 @@ export class SayuHelp extends plugin {
 
   async help(e) {
     return guard(e, async () => {
-      const ok = await replyImage(e, helpCard(SECTIONS), { saveId: "sayustock_help" })
+      const sections = withPrefix(SECTIONS)
+      const ok = await replyImage(e, helpCard(sections), { saveId: "sayustock_help" })
       if (ok) return
-      const text = SECTIONS.map(
+      const text = sections.map(
         s => `【${s.title}】\n${s.items.map(i => `· ${i.cmd} —— ${i.desc}（例：${i.eg}）`).join("\n")}`,
       ).join("\n\n")
       await e.reply(text)

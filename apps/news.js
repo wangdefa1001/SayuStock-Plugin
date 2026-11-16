@@ -28,11 +28,13 @@ export class SayuNews extends plugin {
     /**
      * TRSS-Yunzai 3.x 的 startTask 是直接 `await i.fnc()`，
      * 所以 fnc 必须传函数而不是方法名字符串（与部分文档写法不同）。
+     * 间隔来自配置，cron 在插件加载时生成，改间隔需要重载插件。
      */
+    const interval = Math.min(Math.max(Number(getConfig().news?.interval) || 5, 1), 60)
     this.task = [
       {
         name: "早柚股票-快讯推送",
-        cron: "0 */5 * * * *",
+        cron: `0 */${interval} * * * *`,
         fnc: () => this.pollNews(),
         log: false,
       },
@@ -80,7 +82,7 @@ export class SayuNews extends plugin {
     const gids = Object.keys(subs.groups)
     if (!gids.length) return
 
-    const added = await pullNews(1)
+    const added = await pullNews(Math.min(Math.max(Number(cfg.news.pages) || 1, 1), 5))
     if (!added.length) return
 
     const seen = loadSeen()

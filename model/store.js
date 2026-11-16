@@ -41,6 +41,8 @@ function writeJSON(file, data) {
 /* ------------------------------------------------------------------ 配置 */
 
 export const DEFAULT_CONFIG = {
+  /** 指令是否必须以 # 开头；关掉后「大盘概览」这种裸指令也会响应 */
+  requirePrefix: true,
   /** 是否出图；关闭后仅回文字结果 */
   image: true,
   /** 「个股」一次最多展示多少只 */
@@ -70,7 +72,12 @@ export function getConfig() {
 }
 
 export function saveConfig(patch = {}) {
-  const cfg = { ...getConfig(), ...patch }
+  const cur = getConfig()
+  const cfg = {
+    ...cur,
+    ...patch,
+    news: { ...cur.news, ...(patch.news ?? {}) },
+  }
   writeJSON(FILE.config, cfg)
   return cfg
 }

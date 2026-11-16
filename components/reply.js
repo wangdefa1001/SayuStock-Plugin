@@ -27,8 +27,16 @@ export async function replyImage(e, body, opt = {}) {
   return true
 }
 
+/** 指令前缀校验：requirePrefix 打开时，必须以 # 或 ＃ 开头才响应 */
+function prefixOk(e) {
+  const cfg = getConfig()
+  if (cfg.requirePrefix === false) return true
+  return /^[#＃]/.test(String(e.msg ?? "").trim())
+}
+
 /** 统一异常处理：把错误原因回给用户，避免静默失败 */
 export async function guard(e, fn) {
+  if (!prefixOk(e)) return false
   try {
     return await fn()
   } catch (err) {

@@ -46,10 +46,14 @@ export async function guard(e, fn) {
   }
 }
 
-/** 取指令后的参数文本 */
+/** 取指令后的参数文本（命令词按大小写无关做整词剥离，避免 #IPO日历 这类大小写写法漏剥） */
 export function args(e, ...commands) {
   let text = String(e.msg ?? "").replace(/^[#＃]/, "").trim()
-  for (const c of commands) text = text.replace(c, " ")
+  for (const c of commands) {
+    if (!c) continue
+    const pattern = c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    text = text.replace(new RegExp(pattern, "gi"), " ")
+  }
   return text.replace(/[，,]/g, " ").replace(/\s+/g, " ").trim()
 }
 

@@ -144,6 +144,25 @@ const FS_ALL_A = "m:0 t:6,m:0 t:80,m:1 t:2,m:1 t:23,m:0 t:81 s:2048"
 const MAX_CLOUDMAP_STOCKS = 120
 
 export async function fetchCloudmap(kind, name, { stocks = 120 } = {}) {
+  const FOREIGN_FS = {
+    港股: "m:116 t:3,m:116 t:4",
+    美股: "m:105,m:106,m:107",
+    英股: "m:155 t:1,m:155 t:2,m:155 t:3",
+  }
+
+  /* 港美股大盘云图：热力图只覆盖 A 股，这边只能走列表接口 */
+  if (kind === "market" && name && FOREIGN_FS[name]) {
+    const rows = await clistMany(
+      { fs: FOREIGN_FS[name], fid: "f20", po: 1, fields: ["f3", "f12", "f14", "f20"] },
+      stocks,
+    )
+    const items = rows
+      .filter(r => r.f14 && Number(r.f20) > 0)
+      .map(r => ({ name: r.f14, code: r.f12, chg: Number(r.f3) || 0, cap: Number(r.f20) }))
+    if (!items.length) throw new Error(`${name}云图暂无数据（东财列表接口可能限流）`)
+    return { title: `${name}云图`, sub: `总市值前 ${items.length} 只 · 面积=市值 颜色=涨跌`, items, unit: "只" }
+  }
+
   /* 大盘云图：主源走热力图接口（一次给全市场、不翻页），失败退回列表接口 */
   if (kind === "market") {
     let items = []

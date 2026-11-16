@@ -560,3 +560,5 @@ export async function okxTickers(instIds = ["BTC-USDT", "ETH-USDT", "SOL-USDT", 
     return []
   }
 }
+
+export { getJSON as rawGet }

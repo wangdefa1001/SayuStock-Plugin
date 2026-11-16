@@ -12,6 +12,8 @@ import { SayuMarket } from "./apps/market.js"
 import { SayuStock } from "./apps/stock.js"
 import { SayuCompare } from "./apps/compare.js"
 import { SayuWatchlist } from "./apps/watchlist.js"
+import { SayuAnalysis } from "./apps/analysis.js"
+import { SayuFund, SayuIpo } from "./apps/fund.js"
 import { SayuNews } from "./apps/news.js"
 import { SayuHelp } from "./apps/help.js"
 
@@ -20,6 +22,9 @@ export const apps = {
   stock: SayuStock,
   compare: SayuCompare,
   watchlist: SayuWatchlist,
+  analysis: SayuAnalysis,
+  fund: SayuFund,
+  ipo: SayuIpo,
   news: SayuNews,
   help: SayuHelp,
 }

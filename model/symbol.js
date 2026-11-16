@@ -3,7 +3,7 @@
  */
 
 import { suggest, quote, clist } from "./em.js"
-import { searchByName, secidOf } from "./stockdb.js"
+import { searchByName, secidOf, stockName } from "./stockdb.js"
 
 const cache = new Map()
 const TTL = 10 * 60 * 1000
@@ -65,10 +65,13 @@ export async function resolve(query, { preferBoard = false, allowBoard = true } 
   return cached(`r:${q}:${preferBoard}:${allowBoard}`, async () => {
     if (isSecid(q)) {
       const meta = await quote(q).catch(() => null)
+      const code = meta?.code ?? q.split(".")[1] ?? q
+      // 快照拿不到时用内置字典补名称，避免把 secid 直接当名字展示
+      const local = stockName(code)
       return {
         secid: q,
-        name: meta?.name ?? q,
-        code: meta?.code ?? q.split(".")[1] ?? q,
+        name: meta?.name ?? (local && local !== code ? local : q),
+        code,
         type: q.startsWith("90.") ? "板块" : "",
         isBoard: q.startsWith("90."),
       }

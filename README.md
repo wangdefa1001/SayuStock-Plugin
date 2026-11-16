@@ -18,7 +18,7 @@
 
 ```bash
 cd Yunzai/plugins
-git clone https://github.com/<你的用户名>/SayuStock-Plugin.git SayuStock-Plugin
+git clone https://github.com/wangdefa1001/SayuStock-Plugin.git SayuStock-Plugin
 ```
 
 或用文件管理器把整个 `SayuStock-Plugin/` 目录放进 `Yunzai/plugins/`，然后 `pnpm i` 或直接重启 Yunzai
@@ -79,6 +79,35 @@ git clone https://github.com/<你的用户名>/SayuStock-Plugin.git SayuStock-Pl
 | `#删除自选 600519` | 与自选里的标的匹配后删除 |
 | `#清空自选` → `#确认清空自选` | 二次确认，60 秒内有效 |
 | `#我的自选` | 表格：现价/涨跌幅/涨跌额/换手/成交额/分时缩略 |
+
+### 分析工具
+
+| 指令 | 说明 | 例子 |
+| --- | --- | --- |
+| `#技术分析 [标的]` | 均线/MACD/KDJ/RSI/BOLL 加权评分与信号明细 | `#技术分析 600519` |
+| `#技术分析 周k [标的]` | 周期支持 `日k` / `周k` / `月k` / `60分钟` / `30分钟` | `#技术分析 周k 贵州茅台` |
+| `#股票卡片 [标的]` | 盘口 + 估值 + 技术评分 + 区间表现 | `#股票卡片 510300` |
+| `#自动选股 [条件...]` | 市值/PE/涨跌幅/换手/成交额/股价/行业 组合筛选 | `#自动选股 市值50-200 涨跌幅>2` |
+| `#组合体检 [标的...]` | 自选或指定组合的行业集中度、HHI、风险提示 | `#组合体检` |
+
+选股条件写法：
+
+| 写法 | 含义 |
+| --- | --- |
+| `市值50-200` / `市值>100` | 总市值区间（单位：亿） |
+| `涨跌幅>2` / `涨跌幅3-8` | 当日涨跌幅（%） |
+| `换手>3` / `换手2-10` | 换手率（%） |
+| `成交额>5亿` / `成交额>5000万` | 成交额 |
+| `PE<30` / `PE10-30` | 市盈率（需东财列表接口可用） |
+| `股价>10` | 最新价 |
+| `行业 半导体` | 一级/二级/三级行业名，或名称关键词 |
+
+### 基金与新股
+
+| 指令 | 说明 | 例子 |
+| --- | --- | --- |
+| `#基金持仓 [基金]` | 前十大重仓股、净值占比、所属行业 | `#基金持仓 000001` |
+| `#IPO日历 [市场]` | 申购/上市窗口（T-3 ~ T+10），可跟 `A股`/`港股`/`美股`/`全部` | `#IPO日历 港股` |
 
 ### 新闻
 
@@ -147,6 +176,10 @@ git clone https://github.com/<你的用户名>/SayuStock-Plugin.git SayuStock-Pl
 | 分时 / K线 | `push2his` trends2 / kline | — |
 | 涨跌分布 | `quotederivates/updowndistribution` | — |
 | 名称搜索 | `searchapi/suggest` | 本地股票名字典 |
+| 基金持仓 | `fundwebapi/FundMEApi/FundPositionList` | — |
+| 基金名称 | `fundsuggest/FundSearchAPI` | 直接使用传入代码 |
+| IPO（A股） | `datacenter-web` RPTA_APP_IPOAPPLY | — |
+| IPO（港美股） | `push2/api/qt/clist` 按上市日期 | — |
 
 另外做了三件降低被封概率的事：
 
@@ -155,7 +188,7 @@ git clone https://github.com/<你的用户名>/SayuStock-Plugin.git SayuStock-Pl
 3. **主机熔断**：某个接口刚失败过，20 秒内直接失败并提示，不会让每个指令都卡满重试时间
 
 > 东财对高频/异常流量会临时断开连接（表现为 `fetch failed`），一般几分钟到十几分钟自动恢复。
-> 正常群聊使用频率不会触发；如果你在调试期连续压测，可能会短暂看到「接口刚失败过」的提示。
+> 正常群聊使用频率不会触发；短时间内反复调用同一条指令时，可能短暂看到「接口刚失败过」的提示。
 
 ---
 
@@ -189,17 +222,17 @@ git clone https://github.com/<你的用户名>/SayuStock-Plugin.git SayuStock-Pl
 | --- | --- | --- |
 | 大盘概览 / 云图 / 个股分时 / K线 / 对比 / 自选 / 快讯 | ✅ 已实现 | 见上表 |
 | 全天候 | ✅ 已实现 | 加密板块走 OKX，网络不通时该分组自动省略 |
-| IPO 日历 | ❌ 未实现 | 需要东财 datacenter 多张报表联查 |
-| 基金持仓 / 持仓分布 | ❌ 未实现 | 场外基金净值对比也未接入 |
-| 技术分析 / 股票卡片 / 自动选股 / 组合体检 | ❌ 未实现 | 指标数学已内置（MA/EMA/BOLL/MACD/KDJ/RSI），但没接指令 |
+| IPO 日历 | ✅ 已实现 | A股走 datacenter，港美股走列表接口 |
+| 基金持仓 / 持仓分布 | ✅ 已实现 | 前十大重仓；场外基金净值对比仍未接入 |
+| 技术分析 / 股票卡片 / 自动选股 / 组合体检 | ✅ 已实现 | 指标：MA/EMA/BOLL/MACD/KDJ/RSI |
 | 模拟盘（建盘/策略/撮合/广播） | ❌ 未实现 | 原版一整套 SQLModel + 策略引擎，工作量最大的一块 |
 | AI 模型预测（Kronos）、AI 工具链 | ❌ 未实现 | 依赖外部模型服务 |
 | 雪球新闻 | ⚠️ 换了源 | 雪球匿名接口需要现抓 Cookie（原版靠 Playwright），本版改用**东财 7x24 快讯**，指令名保留 |
 | 多行情源（新浪/腾讯/同花顺/天天基金/AAStocks/纳斯达克） | ❌ 只保留东财 | 原版是「东财主 + 多源兜底」，本版单源；东财挂了就取不到 |
 | 场外基金 K 线/净值 | ❌ 未实现 | 会明确提示「场外基金没有K线」 |
 
-如果你需要模拟盘或技术分析这类重功能，建议**单独开一轮需求**：这些可以从 `model/indicators.js`
-和现有数据层往上加，不需要重写底层。
+模拟盘与 AI 预测属于独立子系统（撮合、账户、策略、外部模型服务），不在当前版本范围内；
+其余看盘与分析类指令已按上表实现。
 
 ---
 
@@ -231,6 +264,10 @@ SayuStock-Plugin/
 │   ├── stock.js            # 个股分时 / K线 / 我的个股
 │   ├── compare.js          # 对比个股
 │   ├── watchlist.js        # 自选增删查
+│   ├── analysis.js         # 技术分析 / 股票卡片 / 自动选股 / 组合体检
+│   ├── fund.js             # 基金持仓 / IPO 日历
+│   ├── analysis.js         # 技术分析 / 股票卡片 / 自动选股 / 组合体检
+│   ├── fund.js             # 基金持仓 / IPO 日历
 │   ├── news.js             # 快讯订阅与推送
 │   └── help.js             # 帮助
 ├── model/                  # 数据层
@@ -241,10 +278,18 @@ SayuStock-Plugin/
 │   ├── stockdb.js          # 内置股票字典读写
 │   ├── store.js            # 配置 / 自选 / 订阅 存储
 │   ├── news.js             # 快讯拉取与游标
+│   ├── analysis.js         # 技术分析 / 选股 / 组合体检 编排
+│   ├── fund.js             # 基金持仓
+│   ├── ipo.js              # IPO 日历
+│   ├── analysis.js         # 技术分析 / 选股 / 组合体检 编排
+│   ├── fund.js             # 基金持仓
+│   ├── ipo.js              # IPO 日历
 │   └── data/               # 股票字典（5921 只，含三级行业）
 ├── components/
 │   ├── charts.js           # SVG：分时/K线/对比/云图/迷你走势
-│   ├── cards.js            # 卡片组装
+│   ├── cards.js            # 卡片组装（行情类）
+│   ├── cards2.js           # 卡片组装（分析/基金/IPO）（行情类）
+│   ├── cards2.js           # 卡片组装（分析/基金/IPO）
 │   └── reply.js            # 出图回话、# 前缀校验、异常兜底
 ├── resources/card.html     # 渲染模板（art-template，只注入 css 与 body）
 └── data/                   # 运行时生成（配置/自选/订阅）

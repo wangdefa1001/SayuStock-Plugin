@@ -1,4 +1,4 @@
-data/
-temp/
+/data/
+/temp/
 node_modules/
 package-lock.json

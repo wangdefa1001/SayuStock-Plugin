@@ -328,7 +328,7 @@ export function helpCard(sections) {
   return card(
     "早柚股票 SayuStock",
     "TRSS-Yunzai 移植版 · 数据来源 东方财富",
-    "指令前可加 #",
+    "指令需带 # 前缀（锅巴面板可关）",
     blocks + footer("行情有延迟，仅供学习参考"),
   )
 }

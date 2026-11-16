@@ -1,0 +1,22 @@
+{
+  "name": "sayustock-plugin",
+  "version": "1.0.0",
+  "description": "早柚股票 SayuStock 的 TRSS-Yunzai 移植版：大盘概览/云图/个股分时/K线/自选/对比/快讯",
+  "type": "module",
+  "main": "index.js",
+  "author": "SayuStock-Plugin contributors (ported from KimigaiiWuyi/SayuStock)",
+  "license": "GPL-3.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "sayustock": {
+    "name": "早柚股票",
+    "plugin": "SayuStock-Plugin",
+    "source": "https://github.com/KimigaiiWuyi/SayuStock"
+  },
+  "upstream": {
+    "name": "SayuStock",
+    "url": "https://github.com/KimigaiiWuyi/SayuStock",
+    "license": "GPL-3.0"
+  }
+}

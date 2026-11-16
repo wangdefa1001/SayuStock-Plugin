@@ -113,9 +113,22 @@ git clone https://github.com/wangdefa1001/SayuStock-Plugin.git SayuStock-Plugin
 
 | 指令 | 说明 |
 | --- | --- |
-| `#订阅雪球新闻` | 群内定时自动推送快讯（默认 5 分钟） |
+| `#订阅雪球新闻` | 群内定时推送财经快讯 |
 | `#取消订阅雪球新闻` | 关闭本群推送 |
-| `#财经快讯 [条数]` | 立即查询，默认 8 条，最多 20 条 |
+| `#财经快讯 [条数]` | 立即查询，默认 8 条，最多 20 条（🔴 = 要闻） |
+
+推送模式（`news.mode`，与原版 SayuStock 的分级口径一致）：
+
+| 模式 | 行为 | 大致消息量 |
+| --- | --- | --- |
+| `important`（默认） | 每 5 分钟推一次，**只要闻**（东财 `titleColor > 0`，约总量的 10%） | 每群每小时 1~3 条 |
+| `all` | 每 5 分钟推一次，整页快讯都推 | 每群每小时 10 条以上 |
+| `hourly` | 每小时整点，把这一小时的**要闻**合并成一条 | 每群每小时 1 条 |
+| `daily` | 每天 08:00，把过去一天的**要闻**合并成一条 | 每群每天 1 条 |
+
+> ⚠️ 如果一个群同时挂着原版 SayuStock 和本插件，两边都会推同一批要闻，必然重复。
+> 同一个群请只保留一个推送源（在面板里关掉 `news.push` 或取消订阅其中一边）。
+
 
 ### 其他
 
@@ -148,7 +161,9 @@ git clone https://github.com/wangdefa1001/SayuStock-Plugin.git SayuStock-Plugin
 | `cloudmapStocks` | `120` | 大盘云图取样只数，越大方块越碎 |
 | `maxWatch` | `30` | 每人自选上限 |
 | `news.push` | `true` | 关掉后不再定时推送（订阅关系保留） |
-| `news.interval` | `5` | 快讯推送间隔（分钟），改完需重载插件 |
+| `news.mode` | `important` | 推送模式：`important` 只要闻 / `all` 全部 / `hourly` 每小时汇总 / `daily` 每日汇总，改完需重载插件 |
+| `news.interval` | `5` | 实时模式的推送间隔（分钟），改完需重载插件 |
+| `news.maxPerPush` | `6` | 单条消息最多合并几条，超出拆成多条 |
 | `news.pages` | `3` | 每次拉取页数（每页约 50 条） |
 
 **推荐用锅巴面板改这些配置**，见第五节。
@@ -202,12 +217,12 @@ git clone https://github.com/wangdefa1001/SayuStock-Plugin.git SayuStock-Plugin
 | 基础设置 | 指令必须带 # 前缀 | `requirePrefix` |
 | 基础设置 | 启用了出图 | `image` |
 | 数量上限 | 个股多图上限 / 对比标的上限 / 大盘云图取样数 / 自选上限 | `maxMultiStock` / `maxCompare` / `cloudmapStocks` / `maxWatch` |
-| 财经快讯 | 启用推送 / 推送间隔 / 每次拉取页数 | `news.push` / `news.interval` / `news.pages` |
+| 财经快讯 | 启用推送 / 推送模式 / 推送间隔 / 单条上限 / 每次拉取页数 | `news.push` / `news.mode` / `news.interval` / `news.maxPerPush` / `news.pages` |
 
 生效时机：
 
 - `requirePrefix`、`image`、各数量上限、`news.push` —— **保存即生效**，不用重启
-- `news.interval` —— 定时任务的 cron 在插件加载时生成，**改完要重载插件或重启 Yunzai**
+- `news.mode`、`news.interval` —— 定时任务的 cron 在插件加载时生成，**改完要重载插件或重启 Yunzai**
 
 没装锅巴也不影响使用，直接改 `data/config.json` 效果一致。
 
@@ -227,7 +242,7 @@ git clone https://github.com/wangdefa1001/SayuStock-Plugin.git SayuStock-Plugin
 | 技术分析 / 股票卡片 / 自动选股 / 组合体检 | ✅ 已实现 | 指标：MA/EMA/BOLL/MACD/KDJ/RSI |
 | 模拟盘（建盘/策略/撮合/广播） | ❌ 未实现 | 原版一整套 SQLModel + 策略引擎，工作量最大的一块 |
 | AI 模型预测（Kronos）、AI 工具链 | ❌ 未实现 | 依赖外部模型服务 |
-| 雪球新闻 | ⚠️ 换了源 | 雪球匿名接口需要现抓 Cookie（原版靠 Playwright），本版改用**东财 7x24 快讯**，指令名保留 |
+| 雪球新闻 | ⚠️ 换了源 | 雪球匿名接口需要现抓 Cookie（原版靠 Playwright），本版改用**东财 7x24 快讯**，指令名保留；要闻判定与推送分级（要闻/全部/小时/每日）与原版一致 |
 | 多行情源（新浪/腾讯/同花顺/天天基金/AAStocks/纳斯达克） | ❌ 只保留东财 | 原版是「东财主 + 多源兜底」，本版单源；东财挂了就取不到 |
 | 场外基金 K 线/净值 | ❌ 未实现 | 会明确提示「场外基金没有K线」 |
 

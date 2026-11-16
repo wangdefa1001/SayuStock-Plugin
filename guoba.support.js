@@ -94,11 +94,33 @@ export function supportGuoba() {
           component: "Switch",
         },
         {
+          field: "news.mode",
+          label: "推送模式",
+          bottomHelpMessage:
+            "只要闻：仅推东财标记的要闻（约总量的 10%，与原版默认一致）；全部快讯：整页都推，消息会多很多；每小时/每日汇总：定时合并推送一次。修改后需重载插件。",
+          component: "Select",
+          componentProps: {
+            options: [
+              { label: "只要闻（实时，推荐）", value: "important" },
+              { label: "全部快讯（实时）", value: "all" },
+              { label: "每小时汇总", value: "hourly" },
+              { label: "每日 08:00 汇总", value: "daily" },
+            ],
+          },
+        },
+        {
           field: "news.interval",
           label: "推送间隔（分钟）",
-          bottomHelpMessage: "定时任务的 cron 在插件加载时生成，修改后需要重载插件或重启 Yunzai 才生效",
+          bottomHelpMessage: "仅「只要闻 / 全部快讯」模式生效；cron 在插件加载时生成，修改后需重载插件",
           component: "InputNumber",
           componentProps: { min: 1, max: 60, step: 1, placeholder: "默认 5" },
+        },
+        {
+          field: "news.maxPerPush",
+          label: "单条消息最多几条",
+          bottomHelpMessage: "一次推送里合并几条快讯，超出会拆成多条发送；建议 5~8",
+          component: "InputNumber",
+          componentProps: { min: 1, max: 20, step: 1, placeholder: "默认 6" },
         },
         {
           field: "news.pages",

@@ -64,6 +64,8 @@ export async function fetchNewsPage({ pageSize = 30, sortEnd = "" } = {}) {
         title: i.title ?? "",
         summary: cleanSummary(i.summary ?? ""),
         code: i.code,
+        // 东财用 titleColor 标要闻（0=普通，>0=要闻），与原版 important 口径一致
+        important: Number(i.titleColor) > 0,
         stocks: (i.stockList ?? []).map(s => ({ name: s.name, code: s.market_code ?? s.code })),
       })),
     }

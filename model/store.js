@@ -53,12 +53,17 @@ export const DEFAULT_CONFIG = {
   cloudmapStocks: 120,
   /** 自选股上限 */
   maxWatch: 30,
-  /** 雪球快讯 */
+  /** 财经快讯 */
   news: {
+    /** 推送模式：important 只要闻 / all 全部 / hourly 每小时汇总 / daily 每日汇总 */
+    mode: "important",
+    /** 拉取间隔（分钟），仅 important / all 模式生效 */
     interval: 5,
     pages: 3,
     /** 是否允许定时推送到已订阅群 */
     push: true,
+    /** 单条消息最多合并几条快讯 */
+    maxPerPush: 6,
   },
 }
 

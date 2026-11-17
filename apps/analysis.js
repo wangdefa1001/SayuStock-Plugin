@@ -2,8 +2,16 @@
 
 import plugin from "../../../lib/plugins/plugin.js"
 import { args, guard, replyImage, tokenize } from "../components/reply.js"
-import { techCard, stockCard, screenerCard, portfolioCard } from "../components/cards2.js"
-import { fetchTechnical, fetchStockCard, screenStocks, parseScreenConditions, parsePeriod, fetchPortfolioCheck } from "../model/analysis.js"
+import { techCard, stockCard, screenerCard, portfolioCard, holdingCard } from "../components/cards2.js"
+import {
+  fetchTechnical,
+  fetchStockCard,
+  screenStocks,
+  parseScreenConditions,
+  parsePeriod,
+  fetchPortfolioCheck,
+  fetchHoldingAnalysis,
+} from "../model/analysis.js"
 
 export class SayuAnalysis extends plugin {
   constructor() {
@@ -17,6 +25,8 @@ export class SayuAnalysis extends plugin {
         { reg: "^#?(股票卡片|个股卡片)(.*)$", fnc: "stockCard" },
         { reg: "^#?(自动选股|选股)(.*)$", fnc: "screener" },
         { reg: "^#?(组合体检|持仓体检|组合诊断)(.*)$", fnc: "portfolio" },
+        { reg: "^#?(持仓分析|持仓诊断)(.*)$", fnc: "holding" },
+        { reg: "^#?(持仓分析|持仓诊断)(.*)$", fnc: "holding" },
       ],
     })
   }
@@ -38,9 +48,9 @@ export class SayuAnalysis extends plugin {
       const data = await fetchTechnical(rest.join(" "), period)
       const ok = await replyImage(e, techCard(data))
       if (!ok) {
+        const lines = (data.score?.items ?? []).map(i => `${i.name}：${i.text}`)
         await e.reply(
-          `【${data.name} ${data.period}】评分 ${data.score?.score}（${data.score?.label}）\n` +
-            (data.score?.items ?? []).map(i => `${i.name}：${i.text}`).join("\n"),
+          [`【${data.name} ${data.period}】评分 ${data.score?.score}（${data.score?.label}）`, ...lines].join("\n"),
         )
       }
     })
@@ -71,6 +81,20 @@ export class SayuAnalysis extends plugin {
         await e.reply(
           `命中 ${data.matched} 只：${data.rows.map(r => `${r.name}(${r.code}) ${r.chg.toFixed(2)}%`).join("、")}`,
         )
+      }
+    })
+  }
+
+  async holding(e) {
+    return guard(e, async () => {
+      const tokens = tokenize(args(e, "持仓分析", "持仓诊断"))
+      const data = await fetchHoldingAnalysis(e.user_id ?? e.sender?.user_id, tokens.length ? tokens : null)
+      const ok = await replyImage(e, holdingCard(data))
+      if (!ok) {
+        const lines = data.items.map(
+          i => `  ${i.name} 综合${i.total} 技术${i.techScore} 资金${i.moneyScore ?? "--"} 估值${i.valueScore}`,
+        )
+        await e.reply([`【持仓分析】整体 ${data.avg}（${data.avgVerdict}）`, ...lines].join("\n"))
       }
     })
   }

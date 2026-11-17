@@ -89,6 +89,7 @@ git clone https://github.com/wangdefa1001/SayuStock-Plugin.git SayuStock-Plugin
 | `#股票卡片 [标的]` | 盘口 + 估值 + 技术评分 + 区间表现 | `#股票卡片 510300` |
 | `#自动选股 [条件...]` | 市值/PE/涨跌幅/换手/成交额/股价/行业 组合筛选 | `#自动选股 市值50-200 涨跌幅>2` |
 | `#组合体检 [标的...]` | 自选或指定组合的行业集中度、HHI、风险提示 | `#组合体检` |
+| `#持仓分析 [标的...]` | 技术 + 资金 + 估值三维评分，逐只给结论 | `#持仓分析` |
 
 选股条件写法：
 
@@ -191,6 +192,10 @@ git clone https://github.com/wangdefa1001/SayuStock-Plugin.git SayuStock-Plugin
 | 分时 / K线 | `push2his` trends2 / kline | — |
 | 涨跌分布 | `quotederivates/updowndistribution` | — |
 | 名称搜索 | `searchapi/suggest` | 本地股票名字典 |
+| **备用源**·快照 | `qt.gtimg.cn`（腾讯） | `hq.sinajs.cn`（新浪，字段较少） |
+| **备用源**·分时 | `web.ifzq.gtimg.cn`（腾讯，仅当日） | — |
+| **备用源**·K线 | `web.ifzq.gtimg.cn`（腾讯，前复权） | — |
+| 场外基金净值 | `fundmobapi/FundMNHisNetList` | — |
 | 基金持仓 | `fundwebapi/FundMEApi/FundPositionList` | — |
 | 基金名称 | `fundsuggest/FundSearchAPI` | 直接使用传入代码 |
 | IPO（A股） | `datacenter-web` RPTA_APP_IPOAPPLY | — |
@@ -238,13 +243,13 @@ git clone https://github.com/wangdefa1001/SayuStock-Plugin.git SayuStock-Plugin
 | 大盘概览 / 云图 / 个股分时 / K线 / 对比 / 自选 / 快讯 | ✅ 已实现 | 见上表 |
 | 全天候 | ✅ 已实现 | 加密板块走 OKX，网络不通时该分组自动省略 |
 | IPO 日历 | ✅ 已实现 | A股走 datacenter，港美股走列表接口 |
-| 基金持仓 / 持仓分布 | ✅ 已实现 | 前十大重仓；场外基金净值对比仍未接入 |
-| 技术分析 / 股票卡片 / 自动选股 / 组合体检 | ✅ 已实现 | 指标：MA/EMA/BOLL/MACD/KDJ/RSI |
+| 基金持仓 / 持仓分布 | ✅ 已实现 | 前十大重仓；场外基金可按累计净值参与「#对比个股」 |
+| 技术分析 / 股票卡片 / 自动选股 / 组合体检 / 持仓分析 | ✅ 已实现 | 指标：MA/EMA/BOLL/MACD/KDJ/RSI；持仓分析为规则加权，不含 AI 情绪/新闻面 |
 | 模拟盘（建盘/策略/撮合/广播） | ❌ 未实现 | 原版一整套 SQLModel + 策略引擎，工作量最大的一块 |
 | AI 模型预测（Kronos）、AI 工具链 | ❌ 未实现 | 依赖外部模型服务 |
 | 雪球新闻 | ⚠️ 换了源 | 雪球匿名接口需要现抓 Cookie（原版靠 Playwright），本版改用**东财 7x24 快讯**，指令名保留；要闻判定与推送分级（要闻/全部/小时/每日）与原版一致 |
-| 多行情源（新浪/腾讯/同花顺/天天基金/AAStocks/纳斯达克） | ❌ 只保留东财 | 原版是「东财主 + 多源兜底」，本版单源；东财挂了就取不到 |
-| 场外基金 K 线/净值 | ❌ 未实现 | 会明确提示「场外基金没有K线」 |
+| 多行情源 | ⚠️ 部分实现 | 已接腾讯（快照/分时/K线）与新浪（快照）作为兜底；同花顺 / AAStocks / 纳斯达克 / VIX 未接 |
+| 场外基金净值 | ✅ 已实现 | `#对比个股 720001 510300` 可混排场内场外；`#个股 日k 场外基金` 仍不支持 K 线 |
 
 模拟盘与 AI 预测属于独立子系统（撮合、账户、策略、外部模型服务），不在当前版本范围内；
 其余看盘与分析类指令已按上表实现。

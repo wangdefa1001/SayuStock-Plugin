@@ -353,3 +353,76 @@ export function ipoCard(d) {
 
   return card("IPO 日历", "", nowText(), inner)
 }
+
+/* ------------------------------------------------------------ 持仓分析 */
+
+export function holdingCard(d) {
+  const items = d.items ?? []
+  const scoreCell = v =>
+    v === null || v === undefined
+      ? `<span class="flat">--</span>`
+      : `<span class="bold ${v >= 65 ? "up" : v < 40 ? "down" : ""}">${Math.round(v)}</span>`
+
+  const rows = items
+    .map(
+      i => `<tr>
+      <td>
+        <div class="bold">${esc(i.name)}</div>
+        <div class="fs12 sub">${esc(i.code)}${i.pe ? ` · PE ${i.pe.toFixed(1)}` : ""}</div>
+      </td>
+      <td class="mono">${scoreCell(i.total)}</td>
+      <td class="mono">${scoreCell(i.techScore)}</td>
+      <td class="mono">${i.moneyScore === null ? '<span class="flat">--</span>' : scoreCell(i.moneyScore)}</td>
+      <td class="mono">${scoreCell(i.valueScore)}</td>
+      <td class="mono">${price(i.price)}</td>
+      <td class="mono ${tone(i.chgPct)}">${i.chgPct === null ? "--" : pct(i.chgPct)}</td>
+      <td class="mono ${tone(i.d20)}">${i.d20 === null ? "--" : pct(i.d20)}</td>
+    </tr>`,
+    )
+    .join("")
+
+  const notes = items
+    .map(i => {
+      const sig = (i.topSignals ?? []).map(x => `${x.name}${x.text}`).join("、")
+      return `<div class="flex-between" style="padding:5px 0;border-bottom:1px dashed #f2f4f8">
+        <span class="fs13"><b>${esc(i.name)}</b>
+          <span class="tag">${esc(i.verdict)}</span>
+          ${sig ? `<span class="fs12 sub" style="margin-left:6px">${esc(sig)}</span>` : ""}</span>
+        <span class="fs12 sub">20 日 ${i.d20 === null ? "--" : pct(i.d20)}</span>
+      </div>`
+    })
+    .join("")
+
+  const head = `<div style="display:flex;gap:18px;align-items:center;margin-bottom:12px">
+    ${scoreRing(d.avg)}
+    <div style="flex:1">
+      <div class="hd-title">持仓分析</div>
+      <div class="fs13" style="margin-top:2px">整体 <b class="${d.avg >= 62 ? "up" : d.avg < 48 ? "down" : "flat"}">${esc(
+        d.avgVerdict,
+      )}</b> · ${items.length} 只标的 · ${esc(d.asOf)}</div>
+      <div class="fs12 sub" style="margin-top:4px">
+        综合 = 技术 ${d.moneyAvailable ? "50%" : "65%"}${d.moneyAvailable ? " + 资金 30%" : ""} + 估值 ${
+          d.moneyAvailable ? "20%" : "35%"
+        }
+      </div>
+    </div>
+  </div>`
+
+  const warn = d.missing?.length
+    ? `<div class="kv" style="margin-top:6px;color:#c2410c">未识别：${esc(d.missing.join("、"))}</div>`
+    : ""
+
+  const inner = `${head}
+    <table class="tbl">
+      <thead><tr>
+        <th>名称</th><th>综合</th><th>技术</th><th>资金</th><th>估值</th><th>现价</th><th>涨跌</th><th>20日</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="sect-title" style="margin-top:12px">逐只结论</div>
+    ${notes}
+    ${warn}
+    ${footer(d.moneyAvailable ? "资金面为当日主力净流入占比" : "资金面数据源不可用，已按技术与估值加权")}`
+
+  return card("", "", "", inner)
+}

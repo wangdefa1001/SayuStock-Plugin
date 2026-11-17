@@ -6,6 +6,8 @@ import { ulist, trends, kline, clist, clistMany, breadth, quote, okxTickers, hot
 import { resolve, resolveBoard, boardConstituents, boardList, guessSecid } from "./symbol.js"
 import { getWatch } from "./store.js"
 import { stockInfo, codesByIndustry, secidOf } from "./stockdb.js"
+import { fundNavHistory } from "./providers.js"
+import { searchFund } from "./fund.js"
 
 const log = globalThis.logger ?? console
 
@@ -304,7 +306,13 @@ export async function fetchIntraday(query, { ndays = 1 } = {}) {
   }
 
   const series = await trends(target.secid, ndays)
-  if (!series) throw new Error(`${target.name} 暂无分时数据（可能停牌或未开盘）`)
+  if (!series) {
+    throw new Error(
+      ndays > 1
+        ? `${target.name} 五日分时获取失败（东财接口不可用时，备用源只提供当日分时）`
+        : `${target.name} 暂无分时数据（可能停牌或未开盘）`,
+    )
+  }
   return { type: "single", series: { ...series, name: series.name || target.name }, ndays }
 }
 
@@ -404,11 +412,42 @@ export async function fetchCompare(queries, { rangeText = "最近一年", start 
   const uniq = [...new Set(expanded)].slice(0, limit)
   const results = await Promise.allSettled(
     uniq.map(async q => {
-      const target = await resolve(q)
-      if (!target) throw new Error("未找到该标的")
-      const bars = await kline(target.secid, KLT.d, { beg, end: fin })
-      if (!bars) throw new Error("无K线数据")
-      return { name: `${target.name}`, bars: bars.bars }
+      const target = await resolve(q).catch(() => null)
+
+      // 1) 先按场内标的取 K 线
+      if (target) {
+        const bars = await kline(target.secid, KLT.d, { beg, end: fin }).catch(() => null)
+        if (bars?.bars?.length > 1) return { name: `${target.name}`, bars: bars.bars }
+      }
+
+      // 2) 场外基金没有 K 线，改走天天基金累计净值曲线（原版同样走净值增长率对比）
+      const code = target?.code ?? (/^\d{6}$/.test(q) ? q : null)
+      if (code) {
+        const nav = await fundNavHistory(code, 400).catch(() => null)
+        if (nav?.length > 1) {
+          const inRange = nav.filter(n => n.date.replace(/-/g, "") >= beg)
+          const picked = inRange.length > 1 ? inRange : nav
+          // 整段只用一种口径，避免「有的行有累计净值、有的没有」导致曲线跳变
+          const useAcc = picked.every(n => Number.isFinite(n.accNav))
+          const rows = picked.map(n => ({
+            date: n.date,
+            open: useAcc ? n.accNav : n.nav,
+            close: useAcc ? n.accNav : n.nav,
+            high: n.nav,
+            low: n.nav,
+            volume: 0,
+            amount: null,
+            chgPct: n.chgPct ?? 0,
+            chg: 0,
+            amplitude: 0,
+            turnover: null,
+          }))
+          const meta = await searchFund(code).catch(() => null)
+          return { name: meta?.name ?? `基金${code}`, bars: rows }
+        }
+      }
+
+      throw new Error(target ? "无K线数据（场外基金也无净值记录）" : "未找到该标的")
     }),
   )
   results.forEach((r, i) => {

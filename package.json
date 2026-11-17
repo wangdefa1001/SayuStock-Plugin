@@ -1,6 +1,6 @@
 {
   "name": "sayustock-plugin",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "早柚股票 SayuStock 的 TRSS-Yunzai 移植版：大盘概览/云图/个股分时/K线/自选/对比/快讯",
   "type": "module",
   "main": "index.js",

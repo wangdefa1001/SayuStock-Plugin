@@ -12,6 +12,7 @@
  */
 
 import { stockName } from "./stockdb.js"
+import { tencentQuotes, tencentQuote, sinaQuotes, tencentKline, tencentIntraday } from "./providers.js"
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
@@ -151,7 +152,11 @@ export async function ulist(secids, fields = ["f2", "f3", "f4", "f12", "f13", "f
       if (rows?.length) return rows
       throw new StockError("批量行情为空")
     } catch (err) {
-      // 东财对列表类接口限流较严，退化成逐只快照（有并发闸门 + 5s 缓存兜底）
+      // 兜底顺序：腾讯批量 → 新浪批量 → 东财逐只快照 → 日K反推
+      for (const alt of [tencentQuotes, sinaQuotes]) {
+        const rows = await alt(secids).catch(() => [])
+        if (rows.length) return rows
+      }
       const rows = await Promise.all(secids.map(s => quoteRow(s).catch(() => null)))
       let valid = rows.filter(Boolean)
       if (!valid.length) {
@@ -218,6 +223,14 @@ const QUOTE_FIELDS = [
  */
 export async function quote(secid) {
   return cached(`quote:${secid}`, 5000, async () => {
+  // 东财不通时直接用腾讯单只快照顶上
+  const em = await emQuote(secid).catch(() => null)
+  if (em) return em
+  return tencentQuote(secid).catch(() => null)
+  })
+}
+
+async function emQuote(secid) {
   const res = await push2JSON(
     "/api/qt/stock/get",
     { invt: 2, fltt: 2, secid, fields: QUOTE_FIELDS.join(",") },
@@ -248,7 +261,6 @@ export async function quote(secid) {
     floatCap: num(d.f117),
     time: num(d.f86),
   }
-  })
 }
 
 /** 东财 K 线 beg/end 需要的 YYYYMMDD */
@@ -297,6 +309,14 @@ export async function trends(secid, ndays = 1) {
 }
 
 async function fetchTrends(secid, days) {
+  const em = await emTrends(secid, days).catch(() => null)
+  if (em) return em
+  // 备用源只提供当日分时；五日分时东财挂了就明确返回 null
+  if (days === 1) return tencentIntraday(secid).catch(() => null)
+  return null
+}
+
+async function emTrends(secid, days) {
   const base = days > 1 ? "https://push2his.eastmoney.com" : "https://push2.eastmoney.com"
   const params = {
     fields1: TREND_F1,
@@ -367,6 +387,12 @@ export async function kline(secid, klt = KLT.d, { beg = "0", end = "20500101", f
 }
 
 async function fetchKline(secid, klt, { beg, end, fqt, lmt }) {
+  const em = await emKline(secid, klt, { beg, end, fqt, lmt }).catch(() => null)
+  if (em) return em
+  return tencentKline(secid, klt, lmt ?? 260).catch(() => null)
+}
+
+async function emKline(secid, klt, { beg, end, fqt, lmt }) {
   const params = {
     fields1: "f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13",
     fields2: "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",

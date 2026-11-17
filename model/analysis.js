@@ -423,3 +423,127 @@ function itemSecid(code) {
 }
 
 export { ulist, clist }
+
+/* ------------------------------------------------------------ 持仓分析 */
+
+/** 主力净流入占比(f184, %) → 0~100 分；数据缺失返回 null */
+function scoreMoneyFlow(ratio) {
+  if (ratio === null || ratio === undefined || !Number.isFinite(Number(ratio))) return null
+  const r = Number(ratio)
+  // -10% ~ +10% 线性映射到 0~100，0% 记 50 分
+  return Math.max(0, Math.min(100, 50 + (r / 10) * 50))
+}
+
+/** PE → 0~100 分：越低越便宜；PE<=0（亏损）按 30 分处理，缺失按中性 60 */
+function scoreValuation(pe) {
+  if (pe === null || pe === undefined || !Number.isFinite(Number(pe))) return 60
+  const v = Number(pe)
+  if (v <= 0) return 30
+  if (v < 15) return 85
+  if (v < 30) return 70
+  if (v < 50) return 55
+  if (v < 80) return 40
+  return 25
+}
+
+function verdict(score) {
+  if (score >= 75) return "强势"
+  if (score >= 62) return "偏强"
+  if (score >= 48) return "中性"
+  if (score >= 35) return "偏弱"
+  return "弱势"
+}
+
+/**
+ * 持仓分析：技术面 + 资金面 + 估值 三维加权，输出每个标的的评分与结论。
+ * @param {string} uid 用户
+ * @param {string[]|null} queries 指定标的；为空则用自选
+ */
+export async function fetchHoldingAnalysis(uid, queries = null) {
+  let secids = queries
+  if (!secids) {
+    secids = getWatch(uid)
+    if (!secids.length) throw new Error("你还没有自选，先「#添加自选 600519」，或「#持仓分析 600519 510300」直接指定")
+  }
+  const picks = []
+  const missing = []
+  for (const q of secids.slice(0, 5)) {
+    const target = await resolve(q, { allowBoard: false }).catch(() => null)
+    if (!target) {
+      missing.push(q)
+      continue
+    }
+    picks.push(target)
+  }
+  if (!picks.length) throw new Error("这些标的都没识别出来")
+
+  // 一次批量拿资金流（f184 主力净占比），备用源不提供时该项留空
+  const flow = new Map()
+  try {
+    const rows = await ulist(
+      picks.map(p => p.secid),
+      ["f12", "f184"],
+    )
+    for (const r of rows ?? []) if (r.f184 !== undefined) flow.set(String(r.f12), Number(r.f184))
+  } catch {
+    /* 资金面不可用时降权处理 */
+  }
+
+  const items = []
+  for (const target of picks) {
+    const [q, kl] = await Promise.all([
+      quote(target.secid).catch(() => null),
+      kline(target.secid, KLT.d, { beg: ymd(-90), end: ymd(0) }).catch(() => null),
+    ])
+    const bars = kl?.bars ?? []
+    const tech = scoreTechnical(bars)
+    const techScore = tech?.score ?? 50
+    const moneyScore = scoreMoneyFlow(flow.get(String(target.code)))
+    const valueScore = scoreValuation(q?.pe)
+
+    // 资金面缺失时把权重让给技术与估值，避免用中性分充数
+    const weights = moneyScore === null ? { t: 0.65, v: 0.35 } : { t: 0.5, m: 0.3, v: 0.2 }
+    const total =
+      weights.m === undefined
+        ? techScore * weights.t + valueScore * weights.v
+        : techScore * weights.t + moneyScore * weights.m + valueScore * weights.v
+
+    const closes = bars.map(b => b.close)
+    const chgN = n => {
+      if (closes.length <= n) return null
+      const prev = closes[closes.length - 1 - n]
+      return prev ? ((closes[closes.length - 1] - prev) / prev) * 100 : null
+    }
+
+    items.push({
+      name: /^\d+\./.test(String(target.name)) ? target.code : target.name,
+      code: target.code,
+      price: q?.price ?? bars[bars.length - 1]?.close ?? null,
+      chgPct: q?.chgPct ?? bars[bars.length - 1]?.chgPct ?? null,
+      pe: q?.pe ?? null,
+      pb: q?.pb ?? null,
+      techScore,
+      techLabel: tech?.label ?? "数据不足",
+      moneyScore,
+      moneyRatio: flow.get(String(target.code)) ?? null,
+      valueScore,
+      total: Math.round(total),
+      verdict: verdict(total),
+      d20: chgN(20),
+      topSignals: (tech?.items ?? []).slice(0, 3),
+    })
+  }
+
+  items.sort((a, b) => b.total - a.total)
+  const avg = items.reduce((a, i) => a + i.total, 0) / items.length
+  return {
+    items,
+    missing,
+    avg: Math.round(avg),
+    avgVerdict: verdict(avg),
+    moneyAvailable: items.some(i => i.moneyScore !== null),
+    asOf: cnDate(0),
+  }
+}
+
+export { ulist as _ulist }

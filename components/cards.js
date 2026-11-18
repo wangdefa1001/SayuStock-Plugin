@@ -15,7 +15,7 @@ import {
   toneColor,
   nowText,
 } from "../render.js"
-import { intradaySVG, klineSVG, compareSVG, treemapSVG, heatColor, sparkline } from "./charts.js"
+import { intradaySVG, klineSVG, compareSVG, treemapSVG, heatColor, sparkline, valuationSVG, vixSVG } from "./charts.js"
 
 /** 卡片内容宽度：900 - 容器左右 padding(16*2) - 卡片左右 padding(18*2) */
 const CW = 828
@@ -331,4 +331,110 @@ export function helpCard(sections) {
     "指令需带 # 前缀（锅巴面板可关）",
     blocks + footer("行情有延迟，仅供学习参考"),
   )
+}
+
+
+/* --------------------------------------------------------------- 估值对比 */
+
+export function valuationCard(d) {
+  const list = d.list || []
+  const failures = d.failures || []
+  const valueName = d.valueName || "估值"
+  const rangeText = d.rangeText || "近三年"
+  const svg = valuationSVG(list, { width: CW, height: 300 })
+
+  const rows = list
+    .map(s => {
+      const pts = s.points
+      const first = pts[0].value
+      const last = pts[pts.length - 1].value
+      const vals = pts.map(p => p.value)
+      const min = Math.min(...vals)
+      const max = Math.max(...vals)
+      const avg = vals.reduce((a, b) => a + b, 0) / vals.length
+      const chg = last - first
+      const chgCls = chg > 0 ? "up" : chg < 0 ? "down" : "flat"
+      return ('<tr>' +
+        '<td><div class="bold">' + esc(s.name) + '</div><div class="fs12 sub">' + esc(s.code) + '</div></td>' +
+        '<td class="mono bold">' + last.toFixed(2) + '</td>' +
+        '<td class="mono ' + chgCls + '">' + (chg > 0 ? "+" : "") + chg.toFixed(2) + '</td>' +
+        '<td class="mono">' + min.toFixed(2) + '</td>' +
+        '<td class="mono">' + max.toFixed(2) + '</td>' +
+        '<td class="mono">' + avg.toFixed(2) + '</td>' +
+      '</tr>')
+    })
+    .join("")
+
+  const table = list.length
+    ? '<table class="tbl" style="margin-top:12px"><thead><tr>' +
+      '<th>标的</th><th>最新</th><th>区间变化</th><th>区间最低</th><th>区间最高</th><th>均值</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>'
+    : ""
+
+  const fail = failures.length
+    ? '<div class="kv" style="margin-top:8px;color:#c2410c">未能获取：' + esc(failures.join("；")) + '</div>'
+    : ""
+
+  const sub = rangeText + " · " + valueName + "历史走势"
+  return card("估值对比", sub, list.length + " 只", svg + table + fail + footer())
+}
+
+
+/* ------------------------------------------------------------- 波动率卡片 */
+
+export function vixCard(d) {
+  const color = d.chg >= 0 ? "#e0333a" : "#0f9d58"
+  const svg = vixSVG(d.points, { width: CW, height: 260, color })
+  const big =
+    '<div class="big" style="margin-bottom:6px">' +
+    '<div class="big-num ' + tone(d.chg) + '">' + Number(d.last).toFixed(2) + '</div>' +
+    '<div class="big-chg ' + tone(d.chg) + '">' + (d.chg >= 0 ? "+" : "") + Number(d.chg).toFixed(2) +
+    '（' + (d.chgPct >= 0 ? "+" : "") + Number(d.chgPct).toFixed(2) + '%）</div>' +
+    '</div>'
+  const kv = '<div class="kv" style="margin-bottom:8px">' +
+    '<span>昨收 <b>' + Number(d.pre).toFixed(2) + '</b></span>' +
+    '<span>最高 <b>' + Number(d.high).toFixed(2) + '</b></span>' +
+    '<span>最低 <b>' + Number(d.low).toFixed(2) + '</b></span>' +
+    '<span>样本 <b>' + d.points.length + ' 点</b></span>' +
+    '</div>'
+  return card(d.label + " 波动率指数", "QVIX · 当日分时", d.label, big + kv + svg + footer("数据来源：optbbs"))
+}
+
+
+/* --------------------------------------------------------------- ETF 找股/对比 */
+
+export function etfSearchCard(d) {
+  const stock = d.stock
+  const themes = d.themes.slice(0, 12).map(({ theme, funds }) => {
+    const rows = funds.slice(0, 5).map(f =>
+      '<tr><td>' + esc(f.name) + '</td><td class="fs12 sub">' + esc(f.code) + '</td>' +
+      '<td class="mono bold">' + f.weight.toFixed(2) + '%</td></tr>').join("")
+    return '<div style="margin-bottom:10px">' +
+      '<div class="sect-title">' + esc(theme) + ' · ' + funds.length + ' 只</div>' +
+      '<table class="tbl"><thead><tr><th>ETF</th><th>代码</th><th>权重</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+  }).join("")
+  const sub = '报告期 ' + d.period + ' · 持有 ETF ' + d.funds.length + ' 只 · 主题 ' + d.themes.length + ' 个'
+  return card("ETF找股 · " + stock.name, sub, d.funds.length + " 只", themes + footer())
+}
+
+export function etfCompareCard(d) {
+  const focus = d.focus
+  const cols = d.list.map(f => {
+    const holdRows = f.rows.slice(0, 10).map(r => {
+      const hit = focus && (String(r.name).includes(focus) || String(r.code) === focus)
+      return '<div class="flex-between" style="padding:3px 4px;border-radius:6px;' + (hit ? 'background:#fff7ed;' : "") + '">' +
+        '<span class="fs13' + (hit ? " bold up" : "") + '">' + esc(r.name) + '</span>' +
+        '<span class="mono fs12">' + r.weight.toFixed(2) + '%</span></div>'
+    }).join("")
+    const indRows = f.industries.slice(0, 8).map(x =>
+      '<span class="pill" style="margin:2px">' + esc(x.name) + ' ' + x.weight.toFixed(1) + '%</span>').join("")
+    return '<div class="tile"><div class="bold">' + esc(f.name) + '</div><div class="fs12 sub">' + esc(f.code) + '</div>' +
+      '<div class="sect-title" style="margin-top:8px">前十大持仓</div>' + holdRows +
+      '<div class="sect-title" style="margin-top:8px">申万二级行业</div><div>' + indRows + '</div></div>'
+  }).join("")
+  const fail = d.failures && d.failures.length
+    ? '<div class="kv" style="color:#c2410c;margin-top:8px">未获取：' + esc(d.failures.join("；")) + '</div>'
+    : ""
+  const sub = d.list.length + " 只 · 前十大持仓与行业权重" + (focus ? " · 关注 " + esc(focus) : "")
+  return card("ETF 对比", sub, d.list.length + " 只", '<div class="grid2">' + cols + '</div>' + fail + footer())
 }

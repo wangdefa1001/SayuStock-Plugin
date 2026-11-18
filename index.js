@@ -13,6 +13,9 @@ import { SayuStock } from "./apps/stock.js"
 import { SayuCompare } from "./apps/compare.js"
 import { SayuWatchlist } from "./apps/watchlist.js"
 import { SayuAnalysis } from "./apps/analysis.js"
+import { SayuValuation } from "./apps/valuation.js"
+import { SayuVix } from "./apps/vix.js"
+import { SayuEtf } from "./apps/etf.js"
 import { SayuFund, SayuIpo } from "./apps/fund.js"
 import { SayuNews } from "./apps/news.js"
 import { SayuHelp } from "./apps/help.js"
@@ -23,6 +26,9 @@ export const apps = {
   compare: SayuCompare,
   watchlist: SayuWatchlist,
   analysis: SayuAnalysis,
+  valuation: SayuValuation,
+  vix: SayuVix,
+  etf: SayuEtf,
   fund: SayuFund,
   ipo: SayuIpo,
   news: SayuNews,

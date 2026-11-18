@@ -545,3 +545,126 @@ export function sparkline(values, { w = 90, h = 26, color = "#e0333a" } = {}) {
 }
 
 export { PALETTE }
+
+
+/* --------------------------------------------------------------- 估值对比 */
+
+/** 估值(PE/PB/股息率)历史走势对比：Y 轴为绝对数值，图例显示最新值 */
+export function valuationSVG(list, opts) {
+  const o = opts || {}
+  const width = o.width || 860
+  const height = o.height || 300
+  const valid = (list || []).filter(s => s.points && s.points.length > 1)
+  if (!valid.length) return '<div class="empty">暂无估值数据</div>'
+
+  const series = valid.map((s, idx) => ({
+    name: s.name,
+    color: PALETTE[idx % PALETTE.length],
+    vals: s.points.map(p => p.value),
+    dates: s.points.map(p => p.day),
+  }))
+
+  const allVals = series.flatMap(s => s.vals)
+  let lo = Math.min(...allVals)
+  let hi = Math.max(...allVals)
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return '<div class="empty">暂无估值数据</div>'
+  if (lo === hi) { lo -= 1; hi += 1 }
+  const padv = (hi - lo) * 0.08
+  lo -= padv
+  hi += padv
+
+  const padL = 4
+  const padR = 68
+  const axisH = 20
+  const plotW = width - padL - padR
+  const plotH = height - axisH
+  const maxLen = Math.max(...series.map(s => s.vals.length))
+  const xOf = i => padL + (maxLen === 1 ? plotW / 2 : (i / (maxLen - 1)) * plotW)
+  const yOf = v => plotH - ((v - lo) / (hi - lo)) * (plotH - 8) - 4
+
+  let grid = ""
+  for (const t of niceTicks(lo, hi, 5)) {
+    const y = r1(yOf(t))
+    grid += '<line x1="' + padL + '" y1="' + y + '" x2="' + (padL + plotW) + '" y2="' + y + '" stroke="' + GRID + '" stroke-width="1"/>'
+    const label = Math.abs(t) < 10 ? t.toFixed(2) : t.toFixed(1)
+    grid += '<text x="' + (padL + plotW + 6) + '" y="' + (y + 3.5) + '" font-size="10" fill="' + AXIS_TXT + '">' + label + '</text>'
+  }
+
+  const lines = series
+    .map(s => polyline(s.vals.map((v, i) => [xOf(i), yOf(v)]), s.color, 1.7))
+    .join("")
+
+  const longest = series.reduce((a, b) => (a.vals.length >= b.vals.length ? a : b))
+  let xLabels = ""
+  const n = 5
+  for (let k = 0; k < n; k++) {
+    const i = Math.round((k / (n - 1)) * (longest.dates.length - 1))
+    const d = longest.dates[i] || ""
+    const anchor = k === 0 ? "start" : k === n - 1 ? "end" : "middle"
+    xLabels += '<text x="' + r1(xOf(i)) + '" y="' + (plotH + 14) + '" font-size="9.5" fill="' + AXIS_TXT + '" text-anchor="' + anchor + '">' + d.slice(2, 10) + '</text>'
+  }
+
+  const legend = series
+    .map(s => {
+      const lastVal = s.vals[s.vals.length - 1]
+      return '<span class="legend-item"><span class="dot" style="background:' + s.color + '"></span>' + escTxt(s.name) + ' <b>' + lastVal.toFixed(2) + '</b></span>'
+    })
+    .join("")
+
+  const svg = '<svg width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" xmlns="http://www.w3.org/2000/svg">' + grid + lines + xLabels + '</svg>'
+  return '<div class="chart-wrap"><div class="legend">' + legend + '</div>' + svg + '</div>'
+}
+
+
+/* ------------------------------------------------------------- 波动率曲线 */
+
+/** 波动率指数日内曲线（QVIX），X 为 HH:MM，Y 为指数值 */
+export function vixSVG(points, opts) {
+  const o = opts || {}
+  const width = o.width || 860
+  const height = o.height || 260
+  const color = o.color || "#2f6fed"
+  const pts = (points || []).filter(p => Number.isFinite(p.value))
+  if (pts.length < 2) return '<div class="empty">暂无波动率数据</div>'
+
+  const vals = pts.map(p => p.value)
+  let lo = Math.min(...vals)
+  let hi = Math.max(...vals)
+  if (lo === hi) { lo -= 1; hi += 1 }
+  const padv = (hi - lo) * 0.12
+  lo -= padv
+  hi += padv
+
+  const padL = 8
+  const padR = 56
+  const axisH = 20
+  const plotW = width - padL - padR
+  const plotH = height - axisH
+  const xOf = i => padL + (i / (pts.length - 1)) * plotW
+  const yOf = v => plotH - ((v - lo) / (hi - lo)) * (plotH - 8) - 4
+
+  let grid = ""
+  for (const t of niceTicks(lo, hi, 4)) {
+    const y = r1(yOf(t))
+    grid += '<line x1="' + padL + '" y1="' + y + '" x2="' + (padL + plotW) + '" y2="' + y + '" stroke="' + GRID + '" stroke-width="1"/>'
+    grid += '<text x="' + (padL + plotW + 6) + '" y="' + (y + 3.5) + '" font-size="10" fill="' + AXIS_TXT + '">' + t.toFixed(2) + '</text>'
+  }
+
+  const line = pts.map((p, i) => (i ? "L" : "M") + r1(xOf(i)) + "," + r1(yOf(p.value))).join(" ")
+  const area = line + " L" + r1(xOf(pts.length - 1)) + "," + r1(plotH) + " L" + r1(xOf(0)) + "," + r1(plotH) + " Z"
+
+  let xLabels = ""
+  const n = 5
+  for (let k = 0; k < n; k++) {
+    const i = Math.round((k / (n - 1)) * (pts.length - 1))
+    const d = pts[i].day || ""
+    const anchor = k === 0 ? "start" : k === n - 1 ? "end" : "middle"
+    xLabels += '<text x="' + r1(xOf(i)) + '" y="' + (plotH + 14) + '" font-size="9.5" fill="' + AXIS_TXT + '" text-anchor="' + anchor + '">' + d + '</text>'
+  }
+
+  const svg = '<svg width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="' + area + '" fill="' + color + '" opacity="0.08"/>' +
+    '<path d="' + line + '" fill="none" stroke="' + color + '" stroke-width="1.8" stroke-linejoin="round"/>' +
+    grid + xLabels + '</svg>'
+  return '<div class="chart-wrap">' + svg + '</div>'
+}
